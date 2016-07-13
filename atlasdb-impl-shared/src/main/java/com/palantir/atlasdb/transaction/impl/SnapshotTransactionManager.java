@@ -48,6 +48,8 @@ import com.palantir.lock.LockRefreshToken;
 import com.palantir.lock.LockRequest;
 import com.palantir.lock.RemoteLockService;
 import com.palantir.timestamp.TimestampService;
+import com.palantir.util.DistributedCacheMgrCache;
+import com.palantir.util.SoftCache;
 
 /* package */ class SnapshotTransactionManager extends AbstractLockAwareTransactionManager {
     private final static int NUM_RETRIES = 10;
@@ -63,6 +65,7 @@ import com.palantir.timestamp.TimestampService;
     final AtomicLong recentImmutableTs = new AtomicLong(-1L);
     final Cleaner cleaner;
     final boolean allowHiddenTableAccess;
+    final DistributedCacheMgrCache<Long, Long> cachedCommitTimes = new SoftCache<Long, Long>();
 
     protected SnapshotTransactionManager(KeyValueService keyValueService,
                                       TimestampService timestampService,
@@ -183,7 +186,8 @@ import com.palantir.timestamp.TimestampService;
                 constraintModeSupplier.get(),
                 cleaner.getTransactionReadTimeoutMillis(),
                 TransactionReadSentinelBehavior.THROW_EXCEPTION,
-                allowHiddenTableAccess);
+                allowHiddenTableAccess,
+                cachedCommitTimes);
     }
 
     @Override
@@ -203,7 +207,8 @@ import com.palantir.timestamp.TimestampService;
                 constraintModeSupplier.get(),
                 cleaner.getTransactionReadTimeoutMillis(),
                 TransactionReadSentinelBehavior.THROW_EXCEPTION,
-                allowHiddenTableAccess);
+                allowHiddenTableAccess,
+                cachedCommitTimes);
         return runTaskThrowOnConflict(task, new OnlyWriteTempTablesTransaction(t, sweepStrategyManager));
     }
 

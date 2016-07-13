@@ -165,7 +165,7 @@ public class SnapshotTransaction extends AbstractTransaction implements Constrai
 
     protected final ConcurrentMap<TableReference, ConcurrentNavigableMap<Cell, byte[]>> writesByTable = Maps.newConcurrentMap();
     private final ConflictDetectionManager conflictDetectionManager;
-    private final DistributedCacheMgrCache<Long, Long> cachedCommitTimes = new SoftCache<Long, Long>();
+    protected final DistributedCacheMgrCache<Long, Long> cachedCommitTimes;
     private final AtomicLong byteCount = new AtomicLong();
 
     private final AtlasDbConstraintCheckingMode constraintCheckingMode;
@@ -205,7 +205,8 @@ public class SnapshotTransaction extends AbstractTransaction implements Constrai
                                AtlasDbConstraintCheckingMode constraintCheckingMode,
                                Long transactionTimeoutMillis,
                                TransactionReadSentinelBehavior readSentinelBehavior,
-                               boolean allowHiddenTableAccess) {
+                               boolean allowHiddenTableAccess,
+                               DistributedCacheMgrCache<Long, Long> cachedCommitTimes) {
         this.keyValueService = keyValueService;
         this.timestampService = timestampService;
         this.defaultTransactionService = transactionService;
@@ -220,6 +221,7 @@ public class SnapshotTransaction extends AbstractTransaction implements Constrai
         this.transactionReadTimeoutMillis = transactionTimeoutMillis;
         this.readSentinelBehavior = readSentinelBehavior;
         this.allowHiddenTableAccess = allowHiddenTableAccess;
+        this.cachedCommitTimes = cachedCommitTimes;
     }
 
     // TEST ONLY
@@ -231,7 +233,8 @@ public class SnapshotTransaction extends AbstractTransaction implements Constrai
                         long startTimeStamp,
                         Map<TableReference, ConflictHandler> tablesToWriteWrite,
                         AtlasDbConstraintCheckingMode constraintCheckingMode,
-                        TransactionReadSentinelBehavior readSentinelBehavior) {
+                        TransactionReadSentinelBehavior readSentinelBehavior,
+                        DistributedCacheMgrCache<Long, Long> cachedCommitTimes) {
         this.keyValueService = keyValueService;
         this.timestampService = timestampService;
         this.defaultTransactionService = transactionService;
@@ -246,6 +249,7 @@ public class SnapshotTransaction extends AbstractTransaction implements Constrai
         this.transactionReadTimeoutMillis = null;
         this.readSentinelBehavior = readSentinelBehavior;
         this.allowHiddenTableAccess = false;
+        this.cachedCommitTimes = cachedCommitTimes;
     }
 
     /**
@@ -257,8 +261,9 @@ public class SnapshotTransaction extends AbstractTransaction implements Constrai
                                   RemoteLockService lockService,
                                   long startTimeStamp,
                                   AtlasDbConstraintCheckingMode constraintCheckingMode,
-                                  TransactionReadSentinelBehavior readSentinelBehavior) {
-        this(keyValueService, transactionService, lockService, startTimeStamp, constraintCheckingMode, readSentinelBehavior, false);
+                                  TransactionReadSentinelBehavior readSentinelBehavior,
+                                  DistributedCacheMgrCache<Long, Long> cachedCommitTimes) {
+        this(keyValueService, transactionService, lockService, startTimeStamp, constraintCheckingMode, readSentinelBehavior, false, cachedCommitTimes);
     }
 
     protected SnapshotTransaction(KeyValueService keyValueService,
@@ -267,7 +272,8 @@ public class SnapshotTransaction extends AbstractTransaction implements Constrai
                                   long startTimeStamp,
                                   AtlasDbConstraintCheckingMode constraintCheckingMode,
                                   TransactionReadSentinelBehavior readSentinelBehavior,
-                                  boolean allowHiddenTableAccess) {
+                                  boolean allowHiddenTableAccess,
+                                  DistributedCacheMgrCache<Long, Long> cachedCommitTimes) {
         this.keyValueService = keyValueService;
         this.defaultTransactionService = transactionService;
         this.cleaner = NoOpCleaner.INSTANCE;
@@ -282,6 +288,7 @@ public class SnapshotTransaction extends AbstractTransaction implements Constrai
         this.transactionReadTimeoutMillis = null;
         this.readSentinelBehavior = readSentinelBehavior;
         this.allowHiddenTableAccess = allowHiddenTableAccess;
+        this.cachedCommitTimes = cachedCommitTimes;
     }
 
     @Override

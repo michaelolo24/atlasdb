@@ -30,6 +30,8 @@ import com.palantir.atlasdb.transaction.service.TransactionService;
 import com.palantir.lock.HeldLocksToken;
 import com.palantir.lock.LockRequest;
 import com.palantir.lock.LockService;
+import com.palantir.util.DistributedCacheMgrCache;
+import com.palantir.util.SoftCache;
 
 /**
  * This {@link TransactionManager} will provide transactions that will read the most recently
@@ -43,6 +45,7 @@ public class ReadOnlyTransactionManager extends AbstractTransactionManager imple
     protected final Supplier<Long> startTimestamp;
     protected final TransactionReadSentinelBehavior readSentinelBehavior;
     protected final boolean allowHiddenTableAccess;
+    final DistributedCacheMgrCache<Long, Long> cachedCommitTimes = new SoftCache<Long, Long>();
 
     public ReadOnlyTransactionManager(KeyValueService keyValueService,
                                       TransactionService transactionService,
@@ -102,7 +105,8 @@ public class ReadOnlyTransactionManager extends AbstractTransactionManager imple
                 startTimestamp.get(),
                 constraintCheckingMode,
                 readSentinelBehavior,
-                allowHiddenTableAccess);
+                allowHiddenTableAccess,
+                cachedCommitTimes);
         return runTaskThrowOnConflict(task, txn);
     }
 

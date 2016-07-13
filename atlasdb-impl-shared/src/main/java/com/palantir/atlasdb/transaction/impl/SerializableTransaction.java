@@ -76,6 +76,7 @@ import com.palantir.common.collect.Maps2;
 import com.palantir.lock.LockRefreshToken;
 import com.palantir.lock.RemoteLockService;
 import com.palantir.timestamp.TimestampService;
+import com.palantir.util.DistributedCacheMgrCache;
 import com.palantir.util.Pair;
 
 /**
@@ -109,7 +110,8 @@ public class SerializableTransaction extends SnapshotTransaction {
                                    AtlasDbConstraintCheckingMode constraintCheckingMode,
                                    Long transactionTimeoutMillis,
                                    TransactionReadSentinelBehavior readSentinelBehavior,
-                                   boolean allowHiddenTableAccess) {
+                                   boolean allowHiddenTableAccess,
+                                   DistributedCacheMgrCache<Long, Long> cachedCommitTimes) {
         super(keyValueService,
               lockService,
               timestampService,
@@ -123,7 +125,8 @@ public class SerializableTransaction extends SnapshotTransaction {
               constraintCheckingMode,
               transactionTimeoutMillis,
               readSentinelBehavior,
-              allowHiddenTableAccess);
+              allowHiddenTableAccess,
+              cachedCommitTimes);
     }
 
     @Override
@@ -495,7 +498,8 @@ public class SerializableTransaction extends SnapshotTransaction {
                 AtlasDbConstraintCheckingMode.NO_CONSTRAINT_CHECKING,
                 transactionReadTimeoutMillis,
                 getReadSentinelBehavior(),
-                allowHiddenTableAccess) {
+                allowHiddenTableAccess,
+                cachedCommitTimes) {
             @Override
             protected Map<Long, Long> getCommitTimestamps(TableReference tableRef,
                                                           Iterable<Long> startTimestamps,

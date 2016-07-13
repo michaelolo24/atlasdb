@@ -34,6 +34,7 @@ import com.palantir.common.base.BatchingVisitable;
 import com.palantir.common.base.BatchingVisitableFromIterable;
 import com.palantir.common.base.BatchingVisitables;
 import com.palantir.common.base.ClosableIterator;
+import com.palantir.util.DistributedCacheMgrCache;
 
 /**
  * This will read the values of all committed transactions.
@@ -45,14 +46,16 @@ public class ReadOnlyTransaction extends SnapshotTransaction {
                                long startTimeStamp,
                                AtlasDbConstraintCheckingMode constraintCheckingMode,
                                TransactionReadSentinelBehavior readSentinelBehavior,
-                               boolean allowHiddenTableAccess) {
+                               boolean allowHiddenTableAccess,
+                               DistributedCacheMgrCache<Long, Long> cachedCommitTimes) {
         super(keyValueService,
               transactionService,
               null,
               startTimeStamp,
               constraintCheckingMode,
               readSentinelBehavior,
-              allowHiddenTableAccess);
+              allowHiddenTableAccess,
+              cachedCommitTimes);
     }
 
     @Override
