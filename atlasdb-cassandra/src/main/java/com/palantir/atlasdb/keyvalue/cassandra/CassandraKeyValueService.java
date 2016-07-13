@@ -735,6 +735,10 @@ public class CassandraKeyValueService extends AbstractKeyValueService {
         }
     }
 
+    private void logFailedCall(TableReference tableRef, Exception e) {
+        log.error("A call to {} failed with an exception.", tableRef.toString());// of type {}", tableRef.toString(), e.getClass());
+    }
+
     private void logTraceResults(long duration, Set<TableReference> tableRefs, ByteBuffer recv_trace, boolean failed) {
         if (failed || duration > getMinimumDurationToTraceMillis()) {
             log.error("Traced a call to {} that {}took {} ms. It will appear in system_traces with UUID={}",
@@ -759,12 +763,18 @@ public class CassandraKeyValueService extends AbstractKeyValueService {
             try {
                 results = client.multiget_slice(rowNames, colFam, pred, consistency);
             } catch (Exception e) {
+                logFailedCall(tableRef, e);
                 logTraceResults(stopwatch.elapsed(TimeUnit.MILLISECONDS), tableRef, recv_trace, true);
                 throw e;
             }
             logTraceResults(stopwatch.elapsed(TimeUnit.MILLISECONDS), tableRef, recv_trace, false);
         } else {
-            results = client.multiget_slice(rowNames, colFam, pred, consistency);
+            try {
+                results = client.multiget_slice(rowNames, colFam, pred, consistency);
+            } catch (Exception e) {
+                logFailedCall(tableRef, e);
+                throw e;
+            }
         }
         return results;
     }
