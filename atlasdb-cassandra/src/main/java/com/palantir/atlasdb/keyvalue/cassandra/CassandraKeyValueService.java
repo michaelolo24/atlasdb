@@ -389,8 +389,13 @@ public class CassandraKeyValueService extends AbstractKeyValueService {
                             ThreadSafeResultVisitor v,
                             ConsistencyLevel consistency) throws Exception {
         List<Callable<Void>> tasks = Lists.newArrayList();
-        for (Map.Entry<InetSocketAddress, List<Cell>> hostAndCells : partitionByHost(cells,
-                                                                               Cells.getRowFunction()).entrySet()) {
+        Map<InetSocketAddress, List<Cell>> hostsAndCells =  partitionByHost(cells, Cells.getRowFunction());
+        int i = 1;
+        int size = hostsAndCells.keySet().size();
+        for (Map.Entry<InetSocketAddress, List<Cell>> hostAndCells : hostsAndCells.entrySet()) {
+            log.trace("Making request {} of {} for a loadWithTs call.  It is against host {} and table {}",
+                    i, size, hostAndCells.getKey().getHostName(), tableRef.toString());
+            i++;
             tasks.addAll(getLoadWithTsTasksForSingleHost(hostAndCells.getKey(),
                                                          tableRef,
                                                          hostAndCells.getValue(),
