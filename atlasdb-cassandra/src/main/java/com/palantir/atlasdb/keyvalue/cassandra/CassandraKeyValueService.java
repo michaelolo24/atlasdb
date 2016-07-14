@@ -21,6 +21,7 @@ import java.nio.charset.Charset;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -105,6 +106,7 @@ import com.palantir.atlasdb.keyvalue.impl.Cells;
 import com.palantir.atlasdb.keyvalue.impl.KeyValueServices;
 import com.palantir.atlasdb.protos.generated.TableMetadataPersistence;
 import com.palantir.atlasdb.table.description.TableMetadata;
+import com.palantir.atlasdb.transaction.impl.TransactionConstants;
 import com.palantir.common.annotation.Idempotent;
 import com.palantir.common.base.ClosableIterator;
 import com.palantir.common.base.ClosableIterators;
@@ -382,6 +384,28 @@ public class CassandraKeyValueService extends AbstractKeyValueService {
         }
     }
 
+    // purpose of this is to make it deterministic what the host and order of the cells to decrease variables in debugging
+    // I don't care that this has a bunch of sorting and is stupid
+    private Map<InetSocketAddress, List<Cell>> hackTransactionsTable(Map<InetSocketAddress, List<Cell>> hostsAndCells) {
+        List<InetSocketAddress> hosts = Lists.newArrayList(hostsAndCells.keySet());
+        Collections.sort(hosts, new Comparator<InetSocketAddress>() {
+            @Override
+            public int compare(InetSocketAddress o1, InetSocketAddress o2) {
+                return o1.getHostName().compareTo(o2.getHostName());
+            }
+        });
+        InetSocketAddress magicHost = Iterables.getFirst(hosts, null);
+
+        List<Cell> allCells = Lists.newArrayList();
+        for (Map.Entry<InetSocketAddress, List<Cell>> hostAndCells : hostsAndCells.entrySet()) {
+            allCells.addAll(hostAndCells.getValue());
+        }
+        Collections.sort(allCells);
+        Map<InetSocketAddress, List<Cell>> magicHostToAllCells = Maps.newHashMap();
+        magicHostToAllCells.put(magicHost, allCells);
+        return magicHostToAllCells;
+    }
+
     private void loadWithTs(TableReference tableRef,
                             Set<Cell> cells,
                             long startTs,
@@ -390,6 +414,11 @@ public class CassandraKeyValueService extends AbstractKeyValueService {
                             ConsistencyLevel consistency) throws Exception {
         List<Callable<Void>> tasks = Lists.newArrayList();
         Map<InetSocketAddress, List<Cell>> hostsAndCells =  partitionByHost(cells, Cells.getRowFunction());
+
+        if (tableRef.equals(TransactionConstants.TRANSACTION_TABLE)) {
+            hostsAndCells = hackTransactionsTable(hostsAndCells);
+        }
+
         int i = 1;
         int size = hostsAndCells.keySet().size();
         for (Map.Entry<InetSocketAddress, List<Cell>> hostAndCells : hostsAndCells.entrySet()) {
