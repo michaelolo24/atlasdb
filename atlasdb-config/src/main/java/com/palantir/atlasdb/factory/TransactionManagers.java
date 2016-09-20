@@ -20,7 +20,6 @@ import java.util.Set;
 
 import javax.net.ssl.SSLSocketFactory;
 
-import org.immutables.value.Value;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -291,12 +290,6 @@ public final class TransactionManagers {
             Optional<SSLSocketFactory> sslSocketFactory = createSslSocketFactory(input.sslConfiguration());
             return createService(sslSocketFactory, input.servers(), serviceClass);
         }
-    }
-
-    @Value.Immutable
-    public interface LockAndTimestampServices {
-        RemoteLockService lock();
-        TimestampService time();
     }
 
     public interface Environment {
