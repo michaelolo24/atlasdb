@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.palantir.atlasdb.server;
+package com.palantir.atlasdb.testing;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -23,30 +23,30 @@ import java.net.SocketAddress;
 import java.net.URI;
 import java.util.List;
 import java.util.Set;
+import java.util.function.Supplier;
 
 import com.google.common.base.Throwables;
 import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableSet;
-import com.palantir.docker.compose.DockerComposeRule;
+import com.palantir.docker.compose.connection.Cluster;
 
 public class DockerProxySelector extends ProxySelector {
-    private final Set<String> proxiedAddresses;
     private final InetSocketAddress proxyAddress;
+    private final Supplier<ProjectInfoMappings> projectInfo;
 
-    public DockerProxySelector(DockerComposeRule dockerComposeRule) {
-        try {
-            this.proxiedAddresses = ImmutableSet.copyOf(dockerComposeRule.dockerCompose().ps());
-            this.proxyAddress = InetSocketAddress.createUnresolved(
-                    dockerComposeRule.containers().ip(),
-                    dockerComposeRule.containers().container("proxy").port(1080).getExternalPort());
-        } catch (IOException | InterruptedException e) {
-            throw Throwables.propagate(e);
-        }
+    public DockerProxySelector(Cluster containers, Supplier<ProjectInfoMappings> projectInfo) {
+        this.proxyAddress = InetSocketAddress.createUnresolved(
+                containers.ip(),
+                containers.container("proxy").port(1080).getExternalPort());
+        this.projectInfo = projectInfo;
     }
 
     @Override
     public List<Proxy> select(URI uri) {
-        if (proxiedAddresses.contains(uri.getHost()) || uri.getHost().startsWith("172.")) {
+        ProjectInfoMappings projectInfoMappings = projectInfo.get();
+        Set<String> hosts = projectInfoMappings.getHostToIp().keySet();
+        Set<String> ips = projectInfoMappings.getIpToHosts().keySet();
+
+        if (hosts.contains(uri.getHost()) || ips.contains(uri.getHost())) {
             return ImmutableList.of(new Proxy(Proxy.Type.SOCKS, proxyAddress));
         } else {
             return ImmutableList.of(Proxy.NO_PROXY);
