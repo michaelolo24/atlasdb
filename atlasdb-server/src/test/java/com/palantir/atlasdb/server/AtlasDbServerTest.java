@@ -18,7 +18,7 @@ package com.palantir.atlasdb.server;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.Collection;
-import java.util.function.Supplier;
+import java.util.concurrent.Callable;
 
 import org.junit.BeforeClass;
 import org.junit.ClassRule;
@@ -58,6 +58,12 @@ public class AtlasDbServerTest {
 
     private static final DockerProxyRule DOCKER_PROXY_RULE = new DockerProxyRule(DOCKER_COMPOSE_RULE.projectName());
 
+    @ClassRule
+    public static final RuleChain RULES = RuleChain.outerRule(GRADLE_TASK)
+            .around(DOCKER_COMPOSE_RULE)
+            .around(DOCKER_PROXY_RULE)
+            .around(APP);
+
     @Parameterized.Parameters(name = "{0}")
     public static Collection<Object[]> serverClients() throws Exception {
         return java.util.Arrays.asList(new Object[][] {
@@ -65,12 +71,6 @@ public class AtlasDbServerTest {
                 { "postgres" }
         });
     }
-
-    @ClassRule
-    public static final RuleChain RULES = RuleChain.outerRule(GRADLE_TASK)
-            .around(DOCKER_COMPOSE_RULE)
-            .around(DOCKER_PROXY_RULE)
-            .around(APP);
 
     private final String client;
 
@@ -93,15 +93,6 @@ public class AtlasDbServerTest {
         assertThat(timestamp1).isLessThan(timestamp2);
     }
 
-    private static void waitForClientStartup(ClientConfig client) {
-        TimestampService timestamp = constructTimestampServiceClient(client.client());
-
-        Awaitility.await()
-                .atMost(Duration.FIVE_MINUTES)
-                .pollInterval(Duration.FIVE_SECONDS)
-                .until(() -> isEndpointReady(timestamp::getFreshTimestamp));
-    }
-
     private static TimestampService constructTimestampServiceClient(String client) {
         return AtlasDbHttpClients.createProxy(
                 Optional.absent(),
@@ -109,12 +100,25 @@ public class AtlasDbServerTest {
                 TimestampService.class);
     }
 
-    private static boolean isEndpointReady(Supplier<?> fn) {
-        try {
-            fn.get();
-            return true;
-        } catch (FeignException e) {
-            return false;
-        }
+    private static void waitForClientStartup(ClientConfig client) {
+        Awaitility.await()
+                .atMost(Duration.FIVE_MINUTES)
+                .pollInterval(Duration.FIVE_SECONDS)
+                .until(serverIsHealthy());
+    }
+
+    private static Callable<Boolean> serverIsHealthy() {
+        HealthcheckResource healthcheckResource = AtlasDbHttpClients.createProxy(
+                Optional.absent(),
+                "http://localhost:" + APP.getAdminPort(),
+                HealthcheckResource.class);
+        return () -> {
+            try {
+                healthcheckResource.get();
+                return true;
+            } catch (FeignException e) {
+                return false;
+            }
+        };
     }
 }
