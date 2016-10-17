@@ -24,9 +24,10 @@ do
 done
 
 case $CIRCLE_NODE_INDEX in
-    0) ./gradlew --profile --continue check $CONTAINER_0_EXCLUDE_ARGS ;;
-    1) ./gradlew --profile --continue ${CONTAINER_1[@]} ;;
-    2) ./gradlew --profile --continue ${CONTAINER_2[@]} ;;
-    3) ./gradlew --profile --continue ${CONTAINER_3[@]} && checkDocsBuild ;;
-    4) ./gradlew --profile --continue ${CONTAINER_4[@]} ;;
+    0) ./gradlew --profile --continue -x findbugsMain -x findbugsTest -x checkstyleMain -x checkstyleTest check $CONTAINER_0_EXCLUDE_ARGS ;;
+    1) ./gradlew --profile --continue -x findbugsMain -x findbugsTest -x checkstyleMain -x checkstyleTest ${CONTAINER_1[@]} ;;
+    2) ./gradlew --profile --continue -x findbugsMain -x findbugsTest -x checkstyleMain -x checkstyleTest ${CONTAINER_2[@]} ;;
+    3) ./gradlew --profile --continue -x findbugsMain -x findbugsTest -x checkstyleMain -x checkstyleTest ${CONTAINER_3[@]} ;;
+    4) ./gradlew --profile --continue -x findbugsMain -x findbugsTest -x checkstyleMain -x checkstyleTest ${CONTAINER_4[@]} ;;
+    5) ./gradlew --profile --continue findbugsMain findbugsTest checkstyleMain checkstyleTest && checkDocsBuild ;;
 esac
